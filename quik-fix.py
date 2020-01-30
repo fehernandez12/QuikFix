@@ -4,61 +4,71 @@ import os
 import sys
 import json
 from discord.ext import commands
+import sqlite3
 
-token = ''
-command_prefix = ''
-users = dict()
+conn = sqlite3.connect(os.path.join(sys.path[0], 'QuikFix.db'))
+db_cursor = conn.cursor()
 
-def get_config():
-    global token
-    global command_prefix
-    with open(os.path.join(sys.path[0], 'config/config.json')) as config_file:
-        config_json = json.load(config_file)
-        token = config_json.get('config').get('token')
-        command_prefix = config_json.get('config').get('prefix')
+bot = commands.Bot('.')
+
+@bot.event
+async def on_ready():
+    print('Logged in as: ')
+    print(bot.user.name)
+    print(bot.user.id)
+    print('------------')
+
+@bot.event
+async def on_message(message):
+    user_id = message.author.id
+    lookup = db_cursor.execute('SELECT * FROM discord_user WHERE userid = %u' % user_id)
+    if not db_cursor.fetchone():
+        user_data = []
+        user_data.append(message.author.discriminator)
+        user_data.append(message.author.id)
+        user_data.append(message.author.name)
+        user_data.append(0)
+        user_data.append(0)
+        user_data.append(0)
+        user_data.append(0)
+        user_data.append(1000)
+        arg = tuple(user_data)
+        db_cursor.execute('INSERT INTO discord_user VALUES(NULL, ?, ?, ?, ?, ?, ?, ?, ?, NULL)', arg)
+        conn.commit()
+        result = db_cursor.fetchone()
+        print("User {} has been added to the database.".format(message.author.name))
+    else:
+        return
+
+@bot.command()
+async def register1(ctx, message):
+    user_id = message.author.id
+    lookup = db_cursor.execute('SELECT plays_game FROM discord_user WHERE userid = %u' % user_id)
+    if not db_cursor.fetchone():
+        db_cursor.execute('UPDATE discord_user SET plays_game = 1 WHERE userid = %u' % user_id)
+        conn.commit()
+    else:
         pass
 
-def get_users():
-    global users
-    with open(os.path.join(sys.path[0], 'data/discord_member.json')) as users_file:
-        users = json.load(users_file)
-
-get_config()
-get_users()
-bot = commands.Bot(command_prefix)
+@bot.command()
+async def say(ctx, *, arg):
+    await ctx.send(arg)
 
 @bot.command()
-async def hello(ctx):
-    await ctx.send('Hello there!')
-
-async def on_member_join(self, member):
-    guild = member.guild
-    if guild.system_channel is not None:
-        to_send = 'Welcome {0.mention} to {1.name}!'.format(member, guild)
-        await guild.system_channel.send(to_send)
-
-@bot.command()
-async def irony(ctx):
-    await ctx.send('How many layers of irony are you on?')
-
-@bot.command()
-async def fiveorsix(ctx):
-    await ctx.send('You are like a baby')
-    time.sleep(2)
-    await ctx.send('Watch this:')
-    time.sleep(5)
-    await ctx.send('**__*~~𝓢 𝓤 𝓒 𝓒~~*__**')
-
-@bot.command()
-async def register1(ctx, member):
-    user = {
-        member.user.id
-    }
-    users.update()
-    await ctx.send('This command is on the making...')
+async def snowspam(ctx):
+    count = 0
+    await ctx.send('Starting mass pinging in 3...')
     time.sleep(1)
-    await ctx.send('You can tag <@244239956170637323> while we finish it, though.')
+    await ctx.send('2...')
+    time.sleep(1)
+    await ctx.send('1...')
+    while count < 200:
+        count += 1
+        remaining = str(200 - count)
+        await ctx.send('<@244239956170637323> is gay\nRemaining pings: {}'.format(remaining))
+    time.sleep(5)
+    await ctx.send('Ok, just one more...')
+    time.sleep(1)
+    await ctx.send('Hi <@244239956170637323>')
 
-
-
-bot.run(token)
+bot.run('NjcxMTMzMjQzMjEwNDY1Mjkz.XjL-Jg.cMFzc_2Ayx05wu1UiAtY4aLYRFI')
